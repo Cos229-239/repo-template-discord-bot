@@ -1,73 +1,21 @@
-name: Notify Discord
+name: Discord Notification
 
 on:
   push:
     branches:
       - '**'
-  project_card:
-    types:
-      - created
-      - moved
-      - converted
 
 jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Gather commit data
-        if: github.event_name == 'push'
-        id: commit
-        run: |
-          echo "EVENT=push" >> $GITHUB_ENV
-          echo "REPO=${{ github.repository }}" >> $GITHUB_ENV
-          echo "BRANCH=${GITHUB_REF##*/}" >> $GITHUB_ENV
-          echo "ACTOR=${{ github.actor }}" >> $GITHUB_ENV
-          echo "COMMIT=$(git log -1 --pretty=format:'%h %s')" >> $GITHUB_ENV
-          echo "LINK=https://github.com/${{ github.repository }}/commit/${{ github.sha }}" >> $GITHUB_ENV
-
-      - name: Gather project-card data
-        if: github.event_name == 'project_card'
-        id: project
-        run: |
-          echo "EVENT=project_card" >> $GITHUB_ENV
-          echo "REPO=${{ github.repository }}" >> $GITHUB_ENV
-          echo "ACTOR=${{ github.actor }}" >> $GITHUB_ENV
-          echo "ACTION=${{ github.event.action }}" >> $GITHUB_ENV
-          echo "CARD_URL=${{ github.event.project_card.content_url }}" >> $GITHUB_ENV
-          echo "COLUMN=${{ github.event.project_card.column_name }}" >> $GITHUB_ENV
-
-      - name: Post to Discord
+      - name: Send Discord Notification
         env:
-          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DISCORD_WEBHOOK: https://discord.com/api/webhooks/1387674208921849906/WlfFXkevX5v0cvmjXzmuryB9g1-itj-tZf2EsZLj9Ynh_yhpQFkoEkAqGR-xWmgVQTIb
         run: |
-          # Build payload.json depending on event
-          if [ "$EVENT" = "push" ]; then
-            cat <<EOF > payload.json
-          {
-            "content": ":white_check_mark: Push to \`$REPO\` on \`$BRANCH\` by \`$ACTOR\`
-            Commit: $COMMIT
-            $LINK"
-            }
-          EOF
-          else
-            cat <<EOF > payload.json
-            {
-              "content": ":card_index_dividers: Project card \`$ACTION\` in \`$REPO\` by \`$ACTOR\`
-              Card: $CARD_URL
-              Column: $COLUMN"
-            }
-          EOF
-          fi
-
-          # Debug: show exactly what we’re sending
-          echo "=== payload.json ==="
-          cat payload.json
-          echo "===================="
-
-          # Send to Discord
-          curl -s -H "Content-Type: application/json" \
-               -d @payload.json \
-               "$WEBHOOK"
+          USERNAME="${{ github.actor }}"
+          BRANCH_NAME="${{ github.ref_name }}"
+          curl -H "Content-Type: application/json" \
+            -X POST \
+            -d "{\"content\": \"✅ New push by **$USERNAME** to branch **$BRANCH_NAME**!\"}" \
+            $DISCORD_WEBHOOK
